@@ -144,7 +144,7 @@ export const friendshipRequestRouter = router({
          *  - https://kysely-org.github.io/kysely/classes/Kysely.html#insertInto
          *  - https://kysely-org.github.io/kysely/classes/Kysely.html#updateTable
          */
-        const [, isExist] = await Promise.all([
+        await Promise.all([
           //  Update the friendship request to have status `accepted`
           t
             .updateTable('friendships')
@@ -156,33 +156,44 @@ export const friendshipRequestRouter = router({
             .execute(),
           // check existing friendship request
           t
-            .selectFrom('friendships')
-            .where('friendships.userId', '=', ctx.session.userId)
-            .where('friendships.friendUserId', '=', input.friendUserId)
-            .select('friendships.id')
-            .limit(1)
-            .executeTakeFirst(),
-        ])
-        //  Create a new friendship request record with the opposite user as the friend
-        if (!isExist) {
-          await t
             .insertInto('friendships')
             .values({
               userId: ctx.session.userId,
               friendUserId: input.friendUserId,
               status: FriendshipStatusSchema.Values['accepted'],
             })
-            .execute()
-        } else {
-          await t
-            .updateTable('friendships')
-            .set({
-              status: FriendshipStatusSchema.Values['accepted'],
-            })
-            .where('friendships.userId', '=', ctx.session.userId)
-            .where('friendships.friendUserId', '=', input.friendUserId)
-            .execute()
-        }
+            .onConflict((oc) =>
+              oc
+                .column('userId')
+                .column('friendUserId')
+                .doUpdateSet({
+                  status: FriendshipStatusSchema.Values['accepted'],
+                })
+                .where('excluded.userId', '==', ctx.session.userId)
+                .where('excluded.friendUserId', '==', input.friendUserId)
+            )
+            .execute(),
+        ])
+        //  Create a new friendship request record with the opposite user as the friend
+        // if (!isExist) {
+        //   await t
+        //     .insertInto('friendships')
+        //     .values({
+        //       userId: ctx.session.userId,
+        //       friendUserId: input.friendUserId,
+        //       status: FriendshipStatusSchema.Values['accepted'],
+        //     })
+        //     .execute()
+        // } else {
+        //   await t
+        //     .updateTable('friendships')
+        //     .set({
+        //       status: FriendshipStatusSchema.Values['accepted'],
+        //     })
+        //     .where('friendships.userId', '=', ctx.session.userId)
+        //     .where('friendships.friendUserId', '=', input.friendUserId)
+        //     .execute()
+        // }
       })
     }),
 

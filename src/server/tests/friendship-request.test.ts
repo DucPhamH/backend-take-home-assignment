@@ -234,7 +234,7 @@ describe.concurrent('Friendship request', async () => {
    *  -> User A should have 1 mutual friend with user B
    */
   test('Question 4 / Scenario 2', async ({ expect }) => {
-    const [userA, userB, userC, userD, userE, userF] = await Promise.all([
+    const [userA, userB, userC, userD, userE] = await Promise.all([
       createUser(),
       createUser(),
       createUser(),

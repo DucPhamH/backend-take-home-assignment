@@ -100,18 +100,49 @@ const userTotalFriendCount = (db: Database) => {
     .groupBy('friendships.userId')
 }
 
+// const userMutualFriendCount = (
+//   db: Database,
+//   userId: number,
+//   friendId: number
+// ) => {
+//   return db
+//     .selectFrom('friendships as f1')
+//     .innerJoin('friendships as f2', 'f2.friendUserId', 'f1.friendUserId')
+//     .where('f1.userId', '=', userId)
+//     .where('f2.userId', '=', friendId)
+//     .where('f1.status', '=', FriendshipStatusSchema.Values['accepted'])
+//     .where('f2.status', '=', FriendshipStatusSchema.Values['accepted'])
+//     .select((eb) => [
+//       'f2.userId',
+//       eb.fn.count('f2.friendUserId').as('mutualFriendCount'),
+//     ])
+//     .groupBy('f2.userId')
+// }
+
 const userMutualFriendCount = (
   db: Database,
   userId: number,
   friendId: number
 ) => {
+  const acceptedStatus = FriendshipStatusSchema.Values['accepted']
+
+  const filteredF1 = db
+    .selectFrom('friendships')
+    .select(['friendUserId'])
+    .where('userId', '=', userId)
+    .where('status', '=', acceptedStatus)
+    .as('f1')
+
+  const filteredF2 = db
+    .selectFrom('friendships')
+    .select(['friendUserId', 'userId'])
+    .where('userId', '=', friendId)
+    .where('status', '=', acceptedStatus)
+    .as('f2')
+
   return db
-    .selectFrom('friendships as f1')
-    .innerJoin('friendships as f2', 'f2.friendUserId', 'f1.friendUserId')
-    .where('f1.userId', '=', userId)
-    .where('f2.userId', '=', friendId)
-    .where('f1.status', '=', FriendshipStatusSchema.Values['accepted'])
-    .where('f2.status', '=', FriendshipStatusSchema.Values['accepted'])
+    .selectFrom(filteredF1)
+    .innerJoin(filteredF2, 'f2.friendUserId', 'f1.friendUserId')
     .select((eb) => [
       'f2.userId',
       eb.fn.count('f2.friendUserId').as('mutualFriendCount'),
